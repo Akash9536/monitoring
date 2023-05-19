@@ -1,0 +1,131 @@
+﻿@page "/alerts"
+@inject HttpClient Http
+@inject NavigationManager MyNavigationManager
+
+<div class="container-fluid my-3">
+
+    <flx_web.Components.Menu 
+        Title="Alerts - Important alerts about the operations" 
+        Description="Displays a list of the latest alerts" 
+        ErrorMessage=@Error 
+        Loading=@(Alerts == null)
+        />
+
+    @LastLoad.HasValue
+    {
+        <div class="alert alert-light" role="alert">
+            Last Load: @LastLoad?.ToString("HH:mm:ss");
+        </div>
+    }
+
+    @if (Alerts?.Any() ?? false)
+    {
+        <div class="container-fluid">
+
+            <table class="table">
+
+                <thead>
+
+                    <th>Timestamp</th>
+                    <th>Customer</th>
+                    <th>Serverity</th>
+                    <th>Message</th>
+
+                </thead>
+                
+                <tbody>
+                @foreach(var alert in Alerts.OrderByDescending(a => a.Timestamp))
+                {
+                    <tr>
+                        <td>
+                            <h5>@alert.Timestamp</h5>
+                        </td>
+                        <td>
+                            <h5>@alert.Customer</h5>
+                        </td>
+                        <td>
+                            <h5>@alert.Severity</h5>
+                        </td>
+                        <td>
+                           <h5>@alert.Message</h5>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+        </div>
+    }
+
+</div>
+
+
+
+@code{
+
+    private List<Alert>? Alerts;
+    private Settings? Settings;
+    private DateTime? LastLoad;
+    private String? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+
+        var timer = new System.Timers.Timer(1);
+        timer.Elapsed += async (s, e) =>
+        {
+            try
+            {
+                timer.Interval = 15000;
+
+                LastLoad = DateTime.Now;
+
+                await LoadDataForTable();
+
+                InvokeAsync(() =>
+                {
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                Error = $"Connection error. {ex.Message}";            
+            }            
+        };
+        timer.Start();
+    }
+
+    protected async Task LoadDataForTable()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/{Settings?.AlertDataFile}?hash={Guid.NewGuid()}");
+            Alerts = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Alert>>(json,
+                new Newtonsoft.Json.JsonSerializerSettings()
+                {
+                    DateTimeZoneHandling = Newtonsoft.Json.DateTimeZoneHandling.Local
+                });
+
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+    protected async Task LoadSettings()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/settings.json?hash={Guid.NewGuid()}");
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+}

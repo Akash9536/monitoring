@@ -1,0 +1,90 @@
+﻿
+@if (Customer != null)
+{
+    <div 
+        class="p-1 align-text-top text-left ms-3" 
+        style="flex-basis: 8%; background-color: #efefef; border-left: solid black 1px"
+        >
+
+        @if (!CompactView)
+        {
+            <div>
+                <small>
+                    <span 
+                        class="badge rounded-pill bg-secondary"
+                        >
+                        @Result.ConsolidatedSuccessCount
+                    </span> 
+                    Successes
+                </small>
+            </div>
+
+            <div>
+                <small>
+                    <span 
+                        class="badge rounded-pill @(@Result.ConsolidatedLegitErrorCount > 0 ? "bg-primary" : "bg-secondary")"
+                        >
+                        @Result.ConsolidatedLegitErrorCount
+                    </span> 
+                    Legit Errors
+                </small>
+            </div>
+        }
+
+        <div class="progress">
+            <div 
+                class="progress-bar progress-bar-striped bg-primary" 
+                role="progressbar" 
+                style="width: @LegitErrorPercent%" 
+                aria-valuenow="@LegitErrorPercent" 
+                aria-valuemin="0" 
+                aria-valuemax="100"
+                />
+
+            <div 
+                class="progress-bar progress-bar-striped bg-secondary" 
+                role="progressbar" 
+                style="width: @SuccessPercent%" 
+                aria-valuenow="@SuccessPercent" 
+                aria-valuemin="0" 
+                aria-valuemax="100"
+                />
+        </div>
+
+    </div>
+}
+
+
+@code {
+
+    [Parameter]
+    public SynthCustomer Customer { get; set; }
+
+    [Parameter]
+    public bool CompactView { get; set; }
+
+    private SynthResult Result;
+    private double SuccessPercent;
+    private double LegitErrorPercent;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        CalcValues();
+    }
+
+    private void CalcValues()
+    {
+        Result = Customer.Results.OrderByDescending(r => r.Timestamp).First();
+        LegitErrorPercent = 0;
+
+        if (Result.ConsolidatedSuccessCount > 0)
+        {
+            LegitErrorPercent = ((double)Result.ConsolidatedLegitErrorCount /
+                (double)Result.ConsolidatedSuccessCount) * 100;
+        }
+
+        SuccessPercent = 100 - LegitErrorPercent;
+    }
+}

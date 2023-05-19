@@ -1,0 +1,101 @@
+﻿@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+<div class="row">
+    <label class="col-auto col-form-label">Interval</label>
+    <div class="col-sm-6">
+        <select class="form-select" aria-label="Interval selection" @onchange="OnIntervalSelection" style="width: 250px">
+            @if (SelectedInterval == "30")
+            {
+                <option selected value="30">30 minutes</option>
+            }
+            else
+            {
+                <option value="30">30 minutes</option>
+            }
+
+            @if (SelectedInterval == "60")
+            {
+                <option selected value="60">1 hour</option>
+            }
+            else
+            {
+                <option value="60">1 hour</option>
+            }
+
+            @if (SelectedInterval == "90")
+            {
+                <option selected value="90">1.5 hours</option>
+            }
+            else
+            {
+                <option value="90">1.5 hours</option>
+            }
+
+            @if (SelectedInterval == "120")
+            {
+                <option selected value="120">2 hours</option>
+            }
+            else
+            {
+                <option value="120">2 hours</option>
+            }
+
+            @if (SelectedInterval == "150")
+            {
+                <option selected value="150">2.5 hours</option>
+            }
+            else
+            {
+                <option value="150">2.5 hours</option>
+            }
+
+            @if (SelectedInterval == "180")
+            {
+                <option selected value="180">3 hours</option>
+            }
+            else
+            {
+                <option value="180">3 hours</option>
+            }
+        </select>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Settings Settings { get; set; }
+
+    private string SelectedInterval;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSelectedInterval();
+    }
+
+    protected async Task OnIntervalSelection(ChangeEventArgs e)
+    {
+        SelectedInterval = e.Value.ToString();
+        await sessionStorage.SetItemAsStringAsync("KibanaInterval", SelectedInterval);
+    }
+
+    protected async Task LoadSelectedInterval()
+    {
+        try
+        {
+            if (await sessionStorage.ContainKeyAsync("KibanaInterval"))
+            {
+                SelectedInterval = await sessionStorage.GetItemAsStringAsync("KibanaInterval");
+            }
+            else
+            {
+                SelectedInterval = "30";
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex?.Message);
+        }
+    }
+}

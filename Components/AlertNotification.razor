@@ -1,0 +1,85 @@
+﻿@inject HttpClient Http
+@inject NavigationManager MyNavigationManager
+
+
+<span class="badge bg-secondary position-relative">
+    Alerts
+    @if (AlertCount > 0)
+    {
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            @AlertCount
+    </span>
+    }
+</span>  
+
+@code {
+    private List<Alert> Alerts;
+
+    private int AlertCount;
+
+    private Settings Settings;
+
+    private DateTime LastLoad;
+
+    private String Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+
+        var timer = new System.Timers.Timer(1);
+        timer.Elapsed += async (s, e) =>
+        {
+            timer.Interval = 15000;
+
+            LastLoad = DateTime.Now;
+
+            await LoadDataForTable();
+
+            InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+            
+        };
+        timer.Start();
+    }
+
+    protected async Task LoadDataForTable()
+    {
+        try
+        {            
+            var json = await Http.GetStringAsync($"data/{Settings.AlertDataFile}?hash={Guid.NewGuid()}");
+            Alerts = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Alert>>(json,
+                new Newtonsoft.Json.JsonSerializerSettings()
+                {
+                    DateTimeZoneHandling = Newtonsoft.Json.DateTimeZoneHandling.Local
+                });
+
+            AlertCount = Alerts.Where(a => a.Timestamp > DateTime.Now.AddMinutes(-20)).Count();
+
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            Error = "Connection error.";
+        }
+    }
+
+    protected async Task LoadSettings()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/settings.json?hash={Guid.NewGuid()}");
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+}
+
+
+

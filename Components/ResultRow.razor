@@ -1,0 +1,45 @@
+﻿<tr>
+    <th 
+        scope="row"
+        >
+        @Result.Timestamp.ToString("HH:mm")
+    </th>
+    <td>
+        @Result.Test
+    </td>
+    <td>
+        @Result.EndPointType
+    </td>
+    <td class="text-end">
+        @Result?.ResponseTime.ToString("0")
+    </td>
+    <td class="text-end">
+        @(Result?.MaxResponseTime == 0 ? "-" : Result?.MaxResponseTime.ToString("0"))
+    </td>
+    <td>
+        <span 
+            class="badge @(Result.Success ? "bg-success" : "bg-danger")"
+            style="font-family: Consolas"
+            >
+            @(Result.Success ? "Success" : "Failure")
+        </span>
+    </td>
+    <td width="175px">
+        @Result.OutcomeType
+    </td>
+    <td>
+        @if (!string.IsNullOrWhiteSpace(Result.ErrorMessage))
+        {
+            <code>
+                @Result.Action: @Result.ErrorMessage.TrimToLength(200)
+            </code> 
+        }
+    </td>
+</tr>
+
+
+@code {
+
+    [Parameter]
+    public SynthResult Result { get; set; }
+}

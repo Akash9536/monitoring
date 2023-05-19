@@ -1,0 +1,110 @@
+﻿@inject NavigationManager MyNavigationManager
+
+@if (Customer != null)
+{
+    <div 
+        class="row"
+        >
+        <div 
+            class="col-12"
+            >
+            <div 
+                class="card mb-1"
+                >
+                <div 
+                    class="card-body" style="@(CompactView ? "padding: 0.2rem 1rem 0.2rem 1rem" : "")"
+                    >
+                    <div 
+                        class="d-flex flex-row"
+                        >
+                        <div 
+                            class="@(CompactView ? "" : "p-1") align-text-top text-left" 
+                            style="flex-basis: 8%"
+                            >
+                            <h6>
+                                @Customer.Id &nbsp;&nbsp;
+                                <small>
+                                    <small>
+                                    @if (IsCustomerView)
+                                    {
+                                        <NavLink href="@(MyNavigationManager.BaseUri +  "tests/")">
+                                            &lt;&lt;
+                                        </NavLink>                                        
+                                    }
+                                    else
+                                    {
+                                        <NavLink href="@(MyNavigationManager.BaseUri + "tests/" + Customer.Id.ToLower())">
+                                            &gt;&gt;
+                                        </NavLink>
+                                    }
+                                    </small>
+                                </small>
+                            </h6>
+
+                            @if (!CompactView)
+                            {
+                                <h5>
+                                    <small 
+                                    class="text-muted"
+                                    >
+                                        @Customer.Name
+                                    </small>
+                                </h5>
+                            }
+                        </div>
+
+                        @{
+                            var resultCounter = 0;
+                        }
+
+                        @foreach (var result in Customer.Results.OrderByDescending(r => r.Timestamp).Take(NumberOfTimeBlocks))
+                        {
+                            <flx_web.Components.ResultBox 
+                                Result=result 
+                                IsFirstRecord=@(resultCounter==0) 
+                                CompactView=@CompactView
+                                />
+
+                            resultCounter++;
+                        }
+
+                        <flx_web.Components.LegitErrorBox 
+                            Customer=Customer
+                            CompactView=@CompactView
+                            />
+
+                    </div>
+
+                    @if (!CompactView)
+                    {
+                        <flx_web.Components.LastError 
+                            Customer=Customer 
+                            />
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public SynthCustomer Customer { get; set; }
+
+    [Parameter]
+    public int NumberOfTimeBlocks { get; set; }
+
+    [Parameter]
+    public bool CompactView { get; set; }
+
+    private bool IsCustomerView;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        IsCustomerView = MyNavigationManager.Uri.ToLower().Contains($"/tests/{Customer.Id}".ToLower());
+    }
+}

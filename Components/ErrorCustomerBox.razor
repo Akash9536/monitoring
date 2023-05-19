@@ -1,0 +1,120 @@
+﻿@inject NavigationManager MyNavigationManager
+
+@if (Customer != null && Requests != null)
+{
+    foreach (var request in Requests)
+    {
+        <div 
+        class="row"
+        >
+            <div 
+            class="col-12"
+            >
+                <div 
+                class="card mb-1"
+                >
+                    <div 
+                    class="card-body"
+                    >
+                        <div 
+                        class="d-flex flex-row"
+                        >
+                            <div 
+                            class="p-1 align-text-top text-left" 
+                            style="flex-basis: 8%"
+                            >
+                                <h5>
+                                    @Customer.Id &nbsp;&nbsp;
+                                    <small>
+                                        <small>
+                                            @if (IsCustomerView)
+                                            {
+                                                <NavLink href="@(MyNavigationManager.BaseUri +  "errors/")">
+                                                    &lt;&lt;
+                                                </NavLink>
+                                            }
+                                            else
+                                            {
+                                                <NavLink href="@(MyNavigationManager.BaseUri + "errors/" + Customer.Id.ToLower())">
+                                                    &gt;&gt;
+                                                </NavLink>
+                                            }
+                                        </small>
+                                    </small>
+                                </h5>
+
+                                <h5>
+                                    <small 
+                                    class="text-muted"
+                                    >
+                                        @request
+                                    </small>
+                                </h5>
+                            </div>
+
+                            @{
+                                var resultCounter = 0;
+                            }
+
+                            @foreach (var result in Customer.Results.Where(r => r.Request == request).
+                                OrderByDescending(r => r.Timestamp).Take(NumberOfTimeBlocks))
+                            {
+                                <flx_web.Components.ErrorResultBox 
+                                Result=result 
+                                IsFirstRecord=@(resultCounter==0) 
+                                />
+
+                                resultCounter++;
+                            }
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+
+    [Parameter]
+    public KibanaCustomer Customer { get; set; }
+
+    [Parameter]
+    public Settings Settings { get; set; }
+
+    [Parameter]
+    public int NumberOfTimeBlocks { get; set; }
+
+    private bool IsCustomerView;
+    private List<string> Requests;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsCustomerView = MyNavigationManager.Uri.ToLower().Contains($"/errors/{Customer.Id}".ToLower());
+
+        Requests = new List<string>();
+
+        if (IsCustomerView)
+        {
+            var requests = Customer.Results.Select(r => r.Request).Distinct();
+            foreach(var request in requests)
+            {
+                if (Global.CustomerWantsRequest(Settings, Customer.Id, request))
+                {
+                    Requests.Add(request);
+                }
+            }
+        }
+        else
+        {
+            Requests.Add("Total"); 
+        }
+    }
+}

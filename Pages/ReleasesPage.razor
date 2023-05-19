@@ -1,0 +1,197 @@
+﻿@page "/releases"
+@inject HttpClient Http
+@inject NavigationManager MyNavigationManager
+
+<div class="container-fluid my-3">
+
+    <flx_web.Components.Menu 
+        Title="Release Tests - Release Sanity Test Results" 
+        Description="Provides the links to automated release sanity tests" 
+        ErrorMessage=@Error 
+        Loading=@(DataForTable == null)
+        />
+
+    @if (DataForTable != null)
+    {
+        <div class="mb-3">
+            <h6>
+                Last Trigger: @LastRelease?.Customer?.ToUpper() 
+                "@LastRelease?.Title" 
+                <span class="badge @(LastRelease?.Status == "Completed" ? "bg-success" : LastRelease?.Status == "Error" ? "bg-danger" : "bg-info")">
+                    @LastRelease?.Status
+                </span>
+            </h6>
+            <button 
+                class="btn btn-primary"
+                data-bs-toggle="modal" data-bs-target="#release-trigger"
+                >
+                Trigger a release
+            </button>
+        </div>
+        <div 
+            class="container-fluid"
+            >
+
+            <table class="table">
+                <tbody>
+                    @foreach(var customer in DataForTable.Customers)
+                    {
+                        <tr>
+                            <td>
+                                <h3>@customer.Id</h3>
+                            </td>
+                            <td>
+                                <h3>@customer.Name</h3>
+                            </td>
+                            <td>
+                                <NavLink href="@(MyNavigationManager.BaseUri +  $"releases/{customer.Id}")">
+                                    @customer.Release
+                                </NavLink>     
+                            </td>
+                            <td>
+                                @customer.ReleaseTimestamp.ToString("yyyy-MM-dd HH:mm")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+        </div>
+    }
+
+    <!-- Modal -->
+<div class="modal fade" id="release-trigger" tabindex="-1" aria-labelledby="release-trigger-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="release-trigger-label">Trigger a release</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+
+            <form @onsubmit="@Submit">
+                <div class="mb-3">
+                    <label class="form-label">Customer</label>
+                    <select @bind="@ReleaseTriggerCustomer" class="form-control">
+                        <option value=""></option>
+                        @foreach(var id in Global.GetCustomersThatCanRelease())
+                        {
+                            <option value="@id?.ToLower()">@id?.ToUpper()</option>                                    
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Release Title</label>
+                    <input type="text" class="form-control" placeholder="My Release" @bind="@ReleaseTriggerTitle"/>                
+                </div>
+
+                <input type="submit" class="btn btn-primary" data-bs-dismiss="modal" aria-label="Close"/>
+            </form>
+
+      </div>
+      <div class="modal-footer">
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+
+@code {
+    private SynthData DataForTable;
+    private Settings Settings;
+    private Release LastRelease;
+
+    private DateTime LastLoad;
+
+    private String Error;
+
+    private string ReleaseTriggerCustomer;
+    private string ReleaseTriggerTitle;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+
+        var timer = new System.Timers.Timer(1);
+        timer.Elapsed += async (s, e) =>
+        {
+            timer.Interval = 15000;
+
+            LastLoad = DateTime.Now;
+
+            await LoadDataForTable();
+            await LoadLastRelease();
+
+            InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });            
+        };
+        timer.Start();
+    }
+
+    protected async Task LoadDataForTable()
+    {
+        try
+        {            
+            var json = await Http.GetStringAsync($"data/{Settings.ReleaseDataFile}?hash={Guid.NewGuid()}");
+            DataForTable = Newtonsoft.Json.JsonConvert.DeserializeObject<SynthData>(json,
+                new Newtonsoft.Json.JsonSerializerSettings()
+                {
+                    DateTimeZoneHandling = Newtonsoft.Json.DateTimeZoneHandling.Local
+                });
+
+            DataForTable.AddNames();
+
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            Error = "Connection error.";
+        }
+    }
+
+    protected async Task LoadLastRelease()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/release-trigger.json?hash={Guid.NewGuid()}");
+            LastRelease = Newtonsoft.Json.JsonConvert.DeserializeObject<Release>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }       
+    }
+
+    protected async Task LoadSettings()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/settings.json?hash={Guid.NewGuid()}");
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+    private async void Submit()
+    {
+        var release = new Release() 
+        { 
+            Customer = ReleaseTriggerCustomer, 
+            Title = ReleaseTriggerTitle,
+            Status = "Pending"
+        };
+
+        await Http.PostAsJsonAsync<Release>($"{Settings.APIBaseUrl}/releases", release);
+    }
+
+}
+
+

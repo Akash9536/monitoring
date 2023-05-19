@@ -1,0 +1,53 @@
+﻿
+<div 
+    class="m-2" 
+    style="height: 25px; overflow: hidden"
+    >
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <code>
+            <small>
+                <strong>
+                    Last Error Message:
+                </strong>
+                <span>
+                    @ErrorMessage
+                </span>
+            </small>
+        </code>
+    }
+
+</div>
+
+
+@code {
+
+    [Parameter]
+    public SynthCustomer Customer { get; set; }
+
+    private string ErrorMessage;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        LoadErrorMessage();
+    }
+
+    private void LoadErrorMessage()
+    {
+        var lastErrorResult = Customer.Results.OrderByDescending(r => r.Timestamp).Take(10).
+            FirstOrDefault(r => !r.Success && r.ConsolidatedCount > 0);
+
+        if (lastErrorResult == null)
+        {
+            return;
+        }
+
+        ErrorMessage = $"{(lastErrorResult.Test != "All Tests" ? lastErrorResult.Test : "")} ({lastErrorResult.Action}) " +
+            $"{lastErrorResult.OutcomeType} : " +
+            $"{lastErrorResult?.ErrorMessage.TrimToLength(400)}";
+    }
+
+}

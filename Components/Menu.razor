@@ -1,0 +1,85 @@
+﻿@inject NavigationManager MyNavigationManager
+
+<div 
+    class="row"
+    >
+    <div 
+        class="col-12"
+        >
+        <div 
+            class="card mb-1"
+            >
+            <div 
+                class="card-body"
+                >
+
+                <div class="row">
+
+                    <div class="col-4">
+                        <h6>@Title</h6>
+                        <small class="muted">@Description</small>
+                    </div>
+
+                    <div class="col-4 text-center">
+                        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                        {
+                            <span><small>@ErrorMessage</small></span>
+                        }
+                        else if (Loading)
+                        {
+                            <span><small>Loading ...</small></span>
+                        }
+                    </div>
+
+                    <div class="col-4 text-end">
+                        <div class="mb-2">
+                            <NavLink href="@(MyNavigationManager.BaseUri +  "alerts/")">
+                                <AlertNotification />
+                            </NavLink>     
+
+                            <NavLink href="@(MyNavigationManager.BaseUri +  "logs/")">
+                                <span class="badge bg-secondary">Kibana Logs</span>                                            
+                            </NavLink>     
+
+                            <NavLink href="@(MyNavigationManager.BaseUri +  "tests/")">
+                                <span class="badge bg-secondary">Synthetic Tests</span>                                            
+                            </NavLink>     
+
+                            <NavLink href="@(MyNavigationManager.BaseUri +  "errors/")">
+                                <span class="badge bg-secondary">Error Impact</span>                                            
+                            </NavLink>     
+
+                            <NavLink href="@(MyNavigationManager.BaseUri +  "releases/")">
+                                <span class="badge bg-secondary">Release Tests</span>                                            
+                            </NavLink>     
+                        </div>
+                        <div>
+                            <NavLink href="https://monitoring.ssg.farelogix.com/">
+                                <span class="badge bg-primary">Dashboard A</span>                                            
+                            </NavLink>     
+
+                            <NavLink href="http://10.103.35.120/">
+                                <span class="badge bg-primary">Dashboard B</span>                                            
+                            </NavLink>     
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public string Description { get; set; }
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public string ErrorMessage { get; set; }
+
+}

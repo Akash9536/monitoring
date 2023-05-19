@@ -1,0 +1,71 @@
+﻿@inject IJSRuntime JS
+
+
+<div 
+    class="card m-1"
+    >
+    <div 
+        class="card-body p-0"
+        style="padding: 2px;"
+        >
+        <div 
+            id="@(Customer.Id)-@(Request)-total"
+            />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public KibanaCustomer Customer { get; set; }
+
+    [Parameter]
+    public string Request { get; set; }
+
+    private bool LoadedOnce;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await LoadTotalChart();
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task LoadTotalChart()
+    {
+        var chartId = $"{Customer.Id}-{Request}-total";
+        var chartTitle = $"{Request} Load";
+        var chartLabel = "Total Hits";
+        var labelColor = "primary";
+
+        var labels = new List<string>();
+        var values = new List<double?>();
+        var baselines = new List<double?>();
+        var durations = new List<double?>();
+
+        var airshoppingResults = Customer.Results.Where(r => r.Request == Request);
+
+        var count = 0;
+        foreach(var result in airshoppingResults.OrderBy(r => r.Timestamp))
+        {
+            if (Customer.LastLogTimestamp < result.Timestamp || 
+               (Customer.LastLogTimestamp == result.Timestamp && result.TotalCount == 0))
+            {
+                labels.Add("pend");
+                values.Add(null);
+                baselines.Add(null);
+                durations.Add(null);
+            }
+            else
+            {
+                labels.Add(result.Timestamp.ToString("HH:mm"));
+                values.Add(result.TotalCount);
+                baselines.Add(result.TotalCountBaseline);
+                durations.Add(result.DurationAverage);
+            }
+
+            count++;
+        }
+
+        await JS.InvokeVoidAsync("loadChart", chartId, chartTitle, "", labels, labelColor, values, baselines, durations);
+    }
+
+}

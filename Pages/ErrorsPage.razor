@@ -1,0 +1,128 @@
+﻿@implements IDisposable
+@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+@page "/errors"
+
+
+
+<div class="container-fluid my-3">
+
+    <flx_web.Components.Menu 
+        Title="Errors - Error Levels and Impact" 
+        Description="Provides the results of error levels for common API endpoints" 
+        ErrorMessage=@Error 
+        Loading=@(Data == null)
+        />
+
+    @if (Data != null)
+    {
+        <flx_web.Components.TimeBlocksBox TimeBlocks=TimeBlocks LastLoaded=LastLoad />
+
+        foreach (var customer in Data.Customers.OrderBy(c => c.Name))
+        {
+            <flx_web.Components.ErrorCustomerBox 
+                Customer=customer 
+                NumberOfTimeBlocks=@TimeBlocks.Count 
+            />
+        }
+    }
+
+</div>
+
+@code {
+    private KibanaData? Data;
+    private KibanaData? BufferedData;
+
+    private List<TimeBlock>? TimeBlocks;
+    private List<TimeBlock>? BufferedTimeBlocks;
+
+    private Settings? Settings;
+    private DateTime LastLoad;
+
+    private System.Timers.Timer Timer;
+
+    private String? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+
+        Timer = new System.Timers.Timer(1);
+        Timer.Elapsed += async (s, e) =>
+        {
+            try
+            {
+                Timer.Interval = 10000;
+
+                LastLoad = DateTime.Now;
+
+                BufferedTimeBlocks = KibanaData.GenerateTimeBlocks(
+                    LastLoad.AddMinutes(-(Settings.KibanaTimeBlockInterval * Settings.KibanaTimeBlockLag)),
+                    Settings.KibanaTimeBlockInterval,
+                    10).OrderByDescending(t => t.From).ToList();
+
+                await LoadData();
+
+                TimeBlocks = BufferedTimeBlocks;
+                Data = BufferedData;
+
+                InvokeAsync(() =>
+                {
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                Error = $"Unknown error. {ex.Message}";
+            }            
+        };
+        Timer.Start();        
+    }
+
+    protected async Task LoadData()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/{Settings.KibanaDataFile}?hash={Guid.NewGuid()}");
+
+            BufferedData = Newtonsoft.Json.JsonConvert.DeserializeObject<KibanaData>(json, 
+                new Newtonsoft.Json.JsonSerializerSettings()
+                {
+                    DateTimeZoneHandling = Newtonsoft.Json.DateTimeZoneHandling.Local
+                });
+
+            BufferedData.Transform(
+                LastLoad.AddMinutes(-(Settings.KibanaTimeBlockInterval * Settings.KibanaTimeBlockLag)), 
+                BufferedTimeBlocks, 
+                Global.GetKibanaCustomers(Settings), 
+                Settings.KibanaRequests);
+
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+    protected async Task LoadSettings()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/settings.json?hash={Guid.NewGuid()}");
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+    public void Dispose()
+    {
+        Timer.Stop();
+    }
+}
+
+

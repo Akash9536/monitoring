@@ -1,0 +1,70 @@
+﻿@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+<div class="row">
+    <label class="col-auto col-form-label">History Files</label>
+    <div class="col-sm-6">
+        @if (HistoryFiles != null)
+        {
+            <select class="form-select" aria-label="History selection" @onchange="OnHistorySelection" style="width: 250px">
+                <option value="">LIVE</option>
+                @foreach(var file in HistoryFiles)
+                {
+                    @if (SelectedFile == file)
+                    {
+                        <option selected value="@file">@NiceFilename(file)</option>    
+                    }
+                    else
+                    {
+                        <option value="@file">@NiceFilename(file)</option>        
+                    }                            
+                }
+            </select>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Settings Settings { get; set; }
+
+    private string SelectedFile;
+    private List<String>? HistoryFiles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSelectedHistory();
+        await LoadHistory();
+    }
+
+    protected async Task OnHistorySelection(ChangeEventArgs e)
+    {
+        SelectedFile = e.Value.ToString();
+        await sessionStorage.SetItemAsStringAsync("SelectedFile", SelectedFile);
+    }
+
+    protected async Task LoadHistory()
+    {
+        HistoryFiles = await Http.GetFromJsonAsync<List<string>>($"{Settings.APIBaseUrl}/history");
+    }
+
+    protected async Task LoadSelectedHistory()
+    {
+        if (await sessionStorage.ContainKeyAsync("SelectedFile"))
+        {
+            SelectedFile = await sessionStorage.GetItemAsStringAsync("SelectedFile");
+        }
+    }
+
+    protected string NiceFilename(string filename)
+    {
+        var timestring =
+            $"{filename.Substring(0, 4)}-" +
+            $"{filename.Substring(4, 2)}-" +
+            $"{filename.Substring(6, 2)} " +
+            $"{filename.Substring(8, 2)}:" +
+            $"{filename.Substring(10, 2)}";
+
+        return timestring;
+    }
+}

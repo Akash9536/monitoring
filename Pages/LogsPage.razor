@@ -1,0 +1,179 @@
+﻿@page "/logs"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+<div class="container-fluid my-3">
+
+    <flx_web.Components.Menu 
+        Title="Logs - Real Time Error Percentages from Kibana Logs" 
+        Description="Provides the percentage of errors to total requests in real time for common API endpoints" 
+        ErrorMessage=@Error 
+        Loading=@(Data == null)
+        />
+    <div class="row mb-2">
+        <div class="col-4">
+            <flx_web.Components.HistoryKibanaSelector Settings=Settings />
+        </div>
+        <div class="col-4">
+            <flx_web.Components.KibanaInterval Settings=Settings />
+        </div>
+    </div>
+
+    @if (Data != null)
+    {
+        foreach (var customer in Data.Customers.OrderBy(c => c.Name))
+        {
+            <flx_web.Components.CustomerErrors Settings=Settings Customer=@customer />
+        }
+    }
+
+</div>
+
+
+@code {
+    private KibanaData? Data;
+    private KibanaData? BufferedData;
+
+    private List<TimeBlock>? TimeBlocks;
+    private List<TimeBlock>? BufferedTimeBlocks;
+
+    private string SelectedFile;
+    private string KibanaInterval;
+
+    private Settings? Settings;
+    private DateTime LastLoad;
+
+    private String? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+
+        var timer = new System.Timers.Timer(1);
+        timer.Elapsed += async (s, e) =>
+        {
+            try
+            {
+                timer.Interval = 10000;
+
+                LastLoad = DateTime.Now;
+
+                await LoadSelectedHistory();
+                await LoadSelectedInterval();
+
+                if (!String.IsNullOrWhiteSpace(SelectedFile))
+                {
+                    var timestring =
+                        $"{SelectedFile.Substring(0, 4)}-" +
+                        $"{SelectedFile.Substring(4, 2)}-" +
+                        $"{SelectedFile.Substring(6, 2)} " +
+                        $"{SelectedFile.Substring(8, 2)}:" +
+                        $"{SelectedFile.Substring(10, 2)}";
+
+                    LastLoad = DateTime.Parse(timestring).ToLocalTime();
+                }
+
+
+                await LoadData();
+
+                TimeBlocks = BufferedTimeBlocks;
+                Data = BufferedData;
+
+                InvokeAsync(() =>
+                {
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                Error = $"Unknown error. {ex.Message}";
+            }            
+        };
+        timer.Start();        
+    }
+
+    protected async Task LoadData()
+    {
+        try
+        {
+            var fileToUse = String.IsNullOrWhiteSpace(SelectedFile)
+                ? Settings.KibanaDataFile
+                : $"historykibana/{SelectedFile}";
+
+            var json = await Http.GetStringAsync($"data/{fileToUse}?hash={Guid.NewGuid()}");
+
+            BufferedData = Newtonsoft.Json.JsonConvert.DeserializeObject<KibanaData>(json, 
+                new Newtonsoft.Json.JsonSerializerSettings()
+                {
+                    DateTimeZoneHandling = Newtonsoft.Json.DateTimeZoneHandling.Local
+                });
+
+            BufferedData.AddNames();
+            BufferedData.RestrictCustomerToSettings(Global.GetKibanaCustomers(Settings));
+            BufferedData.RestrictToInterval(Convert.ToInt32(KibanaInterval));
+
+            //BufferedData.Transform(
+            //    LastLoad.AddMinutes(-(Settings.KibanaTimeBlockInterval * Settings.KibanaTimeBlockLag)), 
+            //    BufferedTimeBlocks, 
+            //    Global.GetKibanaCustomers(Settings), 
+            //    Settings.KibanaRequests);
+
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+    protected async Task LoadSettings()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/settings.json?hash={Guid.NewGuid()}");
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+    protected async Task LoadSelectedHistory()
+    {
+        try
+        {
+            if (await sessionStorage.ContainKeyAsync("SelectedKibanaFile"))
+            {
+                SelectedFile = await sessionStorage.GetItemAsStringAsync("SelectedKibanaFile");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex?.Message);
+        }
+    }
+
+    protected async Task LoadSelectedInterval()
+    {
+        try
+        {
+            if (await sessionStorage.ContainKeyAsync("KibanaInterval"))
+            {
+                KibanaInterval = await sessionStorage.GetItemAsStringAsync("KibanaInterval");
+            }
+            else
+            {
+                KibanaInterval = "30";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex?.Message);
+        }
+    }
+
+}
+
+

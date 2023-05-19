@@ -1,0 +1,69 @@
+﻿@if (Customer != null)
+{
+    <div 
+        class="row"
+        >
+        <div 
+            class="col-12"
+            >
+            <div 
+                class="card mb-1"
+                >
+                <div 
+                    class="card-body"
+                    >
+                    <div 
+                        class="d-flex flex-row"
+                        >
+                        <div 
+                            class="p-1 align-text-top text-left" 
+                            style="flex-basis: 8%"
+                            >
+                            <h5>
+                                @Customer.Id &nbsp;&nbsp;
+                            </h5>
+
+                            <h5>
+                                <small 
+                                    class="text-muted"
+                                    >
+                                    @Customer.Name
+                                </small>
+                            </h5>
+                            <div>Last Log: <br /> @Customer?.LastLogTimestamp.ToString("yyyy-MM-dd HH:mm:ss")</div>
+                        </div>
+
+                        @if (Global.CustomerWantsRequest(Settings, Customer.Id, "Total"))
+                        {
+                            <flx_web.Components.TotalChart Customer=@Customer Request="Total" />
+                        }
+
+                        @foreach(var request in Global.GetKibanaRequest(Settings))
+                        {
+                            if (Global.CustomerWantsRequest(Settings, Customer.Id, request))
+                            {
+                                <flx_web.Components.ErrorsChart Customer=@Customer Request=@request />
+                            }
+                        }
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public KibanaCustomer Customer { get; set; }   
+
+    [Parameter]
+    public Settings Settings { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+}

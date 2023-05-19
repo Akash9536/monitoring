@@ -1,0 +1,74 @@
+﻿<div 
+    class="row"
+    >
+    <div
+        class="col-12"
+        >
+        <div 
+            class="card mb-1"
+            >
+            <div 
+                class="card-body"
+                >
+                <div 
+                    class="d-flex flex-row"
+                    >
+
+                    <div 
+                        class="p-1 align-text-top text-left" 
+                        style="flex-basis: 8%;"
+                        >
+                        @if (!CompactView)
+                        {
+                            <div>
+                                <h6>
+                                    Last Loaded
+                                </h6> 
+                            </div>
+
+                            <div>
+                                <span>
+                                    @LastLoaded?.ToString("yyyy-MM-dd   HH:mm:ss")
+                                </span>
+                            </div>
+                        }
+                    </div>
+
+                    @{var timeBlockCounter = 0;}
+
+                    @foreach(var timeBlock in TimeBlocks)
+                    {
+                        <div class="p-1 align-text-top text-center" style="flex-basis: 8%; @(timeBlockCounter == 0 ? "background-color: #efefef;" : "")">
+                            <h5>
+                                @timeBlock.To.ToString("HH:mm")
+                            </h5>
+                        </div>
+
+                        timeBlockCounter++;
+                    }
+
+                    <div class="p-1 align-text-top text-center ms-3" style="flex-basis: 8%; background-color: #efefef; border-left: solid black 1px">
+                        <h5>
+                            Legit Errors
+                        </h5>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public List<TimeBlock> TimeBlocks { get; set; }
+
+    [Parameter]
+    public DateTime? LastLoaded { get; set; }
+
+    [Parameter]
+    public bool CompactView { get; set; }
+
+}

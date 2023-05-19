@@ -1,0 +1,256 @@
+﻿@inject IJSRuntime JS
+
+
+<div 
+    class="card m-1"
+    >
+    <div 
+        class="card-body p-0"
+        style="padding: 2px;"
+        >
+        <a 
+            href="#"
+            data-bs-toggle="modal" data-bs-target="#details-@(Customer.Id)-@(Request)"
+            >
+            <div 
+                id="@(Customer.Id)-@(Request)-errors"
+                />
+        </a>
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="details-@(Customer.Id)-@(Request)" tabindex="-1" aria-labelledby="detailsLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailsLabel">@Customer.Name (@Customer.Id) @Request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+
+        <div 
+            id="@(Customer.Id)-@(Request)-details-load"
+            />
+
+        <div 
+            id="@(Customer.Id)-@(Request)-details-errors-count"
+            />
+
+        <div 
+            id="@(Customer.Id)-@(Request)-details-errors-percent"
+            />
+
+      </div>
+      <div class="modal-footer">
+      </div>
+    </div>
+  </div>
+</div>
+
+@code {
+    [Parameter]
+    public KibanaCustomer Customer { get; set; }
+
+    [Parameter]
+    public string Request { get; set; }
+
+    private bool LoadedOnce;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await LoadErrorsChart();
+        await LoadDetailsLoadChart();
+        await LoadDetailsErrorsCountChart();
+        await LoadDetailsErrorsPercentChart();
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task LoadErrorsChart()
+    {
+        var chartId = $"{Customer.Id}-{Request}-errors";
+        var chartTitle = $"{Request} Error %";
+        var chartLabel = "Error %";
+        var labelColor = "primary";
+
+        var labels = new List<string>();
+        var values = new List<double?>();
+        var baselines = new List<double?>();
+        var durations = new List<double?>();
+
+        var airshoppingResults = Customer.Results.Where(r => r.Request == Request);
+
+        var count = 0;
+        foreach(var result in airshoppingResults.OrderBy(r => r.Timestamp))
+        {
+            if (Customer.LastLogTimestamp < result.Timestamp || 
+               (Customer.LastLogTimestamp == result.Timestamp && result.TotalCount == 0))
+            {
+                labels.Add("pend");
+                values.Add(null);
+                baselines.Add(null);
+                durations.Add(null);
+            }
+            else
+            {
+                labels.Add(result.Timestamp.ToString("HH:mm"));
+                values.Add(result.ErrorPercent);
+                baselines.Add(result.ErrorPercentBaseline);
+                durations.Add(result.DurationAverage);
+            }
+
+            count++;
+        }
+
+        if 
+        (
+            (   values.Count > 1 &&
+                !values[0].HasValue &&                     
+                values[1].HasValue &&
+                values[1].Value > 0 &&
+                values[1].Value > airshoppingResults.First().Max
+            ) ||
+            (
+                values.Count >= 1 &&
+                values[0].HasValue &&
+                values[0].Value > 0 &&
+                values[0].Value > airshoppingResults.First().Max
+            )
+        )
+        {
+            labelColor = "danger";
+        }
+
+        await JS.InvokeVoidAsync("loadChart", chartId, chartTitle, "", labels, labelColor, values, baselines, durations);
+    }
+
+    private async Task LoadDetailsLoadChart()
+    {
+        var chartId = $"{Customer.Id}-{Request}-details-load";
+        var chartTitle = $"{Request} Load";
+        var chartLabel = "Load";
+        var labelColor = "primary";
+
+        var labels = new List<string>();
+        var values = new List<double?>();
+        var baselines = new List<double?>();
+
+        var airshoppingResults = Customer.Results.Where(r => r.Request == Request);
+
+        var count = 0;
+        foreach(var result in airshoppingResults.OrderBy(r => r.Timestamp))
+        {
+            if (Customer.LastLogTimestamp < result.Timestamp || 
+               (Customer.LastLogTimestamp == result.Timestamp && result.TotalCount == 0))
+            {
+                labels.Add("pend");
+                values.Add(null);
+                baselines.Add(null);
+            }
+            else
+            {
+                labels.Add(result.Timestamp.ToString("HH:mm"));
+                values.Add(result.TotalCount);
+                baselines.Add(result.TotalCountBaseline);
+            }
+
+            count++;
+        }
+
+        await JS.InvokeVoidAsync("loadChart", chartId, chartTitle, "", labels, labelColor, values, baselines);
+    }
+
+    private async Task LoadDetailsErrorsCountChart()
+    {
+        var chartId = $"{Customer.Id}-{Request}-details-errors-count";
+        var chartTitle = $"{Request} Error Count";
+        var chartLabel = "Errors";
+        var labelColor = "primary";
+
+        var labels = new List<string>();
+        var values = new List<double?>();
+        var baselines = new List<double?>();
+
+        var airshoppingResults = Customer.Results.Where(r => r.Request == Request);
+
+        var count = 0;
+        foreach(var result in airshoppingResults.OrderBy(r => r.Timestamp))
+        {
+            if (Customer.LastLogTimestamp < result.Timestamp || 
+               (Customer.LastLogTimestamp == result.Timestamp && result.TotalCount == 0))
+            {
+                labels.Add("pend");
+                values.Add(null);
+                baselines.Add(null);
+            }
+            else
+            {
+                labels.Add(result.Timestamp.ToString("HH:mm"));
+                values.Add(result.ErrorCount);
+                baselines.Add(result.ErrorCountBaseline);
+            }
+
+            count++;
+        }
+
+        await JS.InvokeVoidAsync("loadChart", chartId, chartTitle, "", labels, labelColor, values, baselines);
+    }
+
+    private async Task LoadDetailsErrorsPercentChart()
+    {
+        var chartId = $"{Customer.Id}-{Request}-details-errors-percent";
+        var chartTitle = $"{Request} Error %";
+        var chartLabel = "Error %";
+        var labelColor = "primary";
+
+        var labels = new List<string>();
+        var values = new List<double?>();
+        var baselines = new List<double?>();
+
+        var airshoppingResults = Customer.Results.Where(r => r.Request == Request);
+
+        var count = 0;
+        foreach(var result in airshoppingResults.OrderBy(r => r.Timestamp))
+        {
+            if (Customer.LastLogTimestamp < result.Timestamp || 
+               (Customer.LastLogTimestamp == result.Timestamp && result.TotalCount == 0))
+            {
+                labels.Add("pend");
+                values.Add(null);
+                baselines.Add(null);
+            }
+            else
+            {
+                labels.Add(result.Timestamp.ToString("HH:mm"));
+                values.Add(result.ErrorPercent);
+                baselines.Add(result.ErrorPercentBaseline);
+            }
+
+            count++;
+        }
+
+        if 
+        (
+            (   values.Count > 1 &&
+                !values[0].HasValue &&                     
+                values[1].HasValue &&
+                values[1].Value > 0 &&
+                values[1].Value > airshoppingResults.First().Max
+            ) ||
+            (
+                values.Count >= 1 &&
+                values[0].HasValue &&
+                values[0].Value > 0 &&
+                values[0].Value > airshoppingResults.First().Max
+            )
+        )
+        {
+            labelColor = "danger";
+        }
+
+        await JS.InvokeVoidAsync("loadChart", chartId, chartTitle, "", labels, labelColor, values, baselines);
+    }
+
+}

@@ -1,0 +1,147 @@
+﻿<div 
+    class="p-1 align-text-top text-left" 
+    style="flex-basis: 8%; @(IsFirstRecord ? "background-color: #efefef;" : "")"
+    >
+    
+    @if (Result.ConsolidatedCount > 0)
+    {
+        @if (!CompactView)
+        {
+            <div>
+                <small>
+                    <span 
+                        class="badge rounded-pill bg-secondary"
+                        >
+                        @Result.ConsolidatedCount
+                    </span> 
+                    tests
+                </small>
+            </div>
+
+            <div>
+                <small>
+                    <span 
+                        class="badge rounded-pill @(@Result.ConsolidatedFailureCount > 0 ? "bg-danger" : "bg-secondary")"
+                        >
+                        @Result.ConsolidatedFailureCount
+                    </span> 
+                    failures
+                </small>
+            </div>
+        }
+
+        <div class="progress">
+            <div 
+                class="progress-bar progress-bar-striped bg-danger" 
+                role="progressbar" 
+                style="width:@FailurePercent%" 
+                aria-valuenow="@FailurePercent" 
+                aria-valuemin="0" 
+                aria-valuemax="100"
+                />
+
+            <div 
+                class="progress-bar progress-bar-striped bg-success" 
+                role="progressbar" 
+                style="width:@SuccessPercent%" 
+                aria-valuenow="@SuccessPercent" 
+                aria-valuemin="0" 
+                aria-valuemax="100"
+                />
+        </div>
+    }
+    else
+    {
+        @if (!CompactView)
+        {
+            <div>
+                <small>
+                    <span 
+                    class="badge rounded-pill bg-secondary"
+                    >
+
+                        @Result.ConsolidatedCount
+
+                    </span>
+
+                    tests
+                </small>
+            </div>
+
+            <div>
+                &nbsp;
+            </div>
+        }
+        <div 
+            class="progress"
+            >
+
+            @if (IsFirstRecord)
+            {
+                <div 
+                    class="progress-bar progress-bar-striped bg-info" 
+                    role="progressbar" 
+                    style="width:100%" 
+                    aria-valuenow="100" 
+                    aria-valuemin="0" 
+                    aria-valuemax="100"
+                    />
+            }
+            else 
+            {
+                <div 
+                    class="progress-bar progress-bar-striped bg-warning" 
+                    role="progressbar" 
+                    style="width:100%" 
+                    aria-valuenow="100" 
+                    aria-valuemin="0" 
+                    aria-valuemax="100"
+                    />
+            }
+
+        </div>
+        }
+</div>
+
+@code {
+
+    [Parameter]
+    public SynthResult Result { get; set; }
+
+    [Parameter]
+    public bool IsFirstRecord { get; set; }
+
+    [Parameter]
+    public bool CompactView { get; set; }
+
+    private double SuccessPercent;
+    private double FailurePercent;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        CalcValues();
+    }
+
+    private void CalcValues()
+    {
+        SuccessPercent = 0;
+        FailurePercent = 0;
+
+        if (Result.ConsolidatedCount > 0)
+        {
+            SuccessPercent = ((double)Result.ConsolidatedSuccessCount /
+                (double)Result.ConsolidatedCount) * 100;
+
+            FailurePercent = ((double)Result.ConsolidatedFailureCount /
+                (double)Result.ConsolidatedCount) * 100;
+        }
+
+        if (Result.Action != "No-Tests-Performed" && SuccessPercent == 0 && FailurePercent == 0)
+        {
+            Console.WriteLine("Funny,");
+        }       
+    }
+
+}

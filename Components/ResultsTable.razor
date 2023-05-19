@@ -1,0 +1,30 @@
+﻿
+<div 
+    class="row"
+    >
+    <div 
+        class=col-12
+        >
+
+        <table 
+            class="table table-sm table-striped"
+            >
+            <tbody>
+
+                @foreach(var result in Customer.Results.OrderByDescending(r => r.Timestamp).Take(300))
+                {    
+                    <flx_web.Components.ResultRow Result=result />
+                }
+
+            </tbody>
+        </table>
+
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public SynthCustomer Customer { get; set; }
+
+}

@@ -1,0 +1,25 @@
+﻿@page "/"
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<div class="container-fluid">
+
+    Last Loaded: <span>@LastLoad?.ToString("HH:mm:ss")</span>
+    <span>@Error</span>
+
+</div>
+
+@code {
+    private SynthData? Data;
+    private DateTime? LastLoad;
+    private String Error;
+    
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        NavManager.NavigateTo("/tests");
+    }
+}
+
+

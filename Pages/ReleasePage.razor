@@ -1,0 +1,110 @@
+﻿@page "/releases/{CustomerId}"
+@inject HttpClient Http
+
+<div class="container-fluid my-3">
+
+    <flx_web.Components.Menu 
+        Title="Customer Release Test - Release Sanity Test Results" 
+        Description="Provides the results of automated release sanity tests for a customer" 
+        ErrorMessage=@Error 
+        Loading=@(DataForTable == null)
+        />
+
+    @if (DataForTable != null)
+    {
+        <div 
+            class="container-fluid"
+            >
+
+            <h3>
+                @CustomerForTable.Id 
+                @CustomerForTable.Name - 
+                
+                <small>
+                    @CustomerForTable.Release (@CustomerForTable.ReleaseTimestamp.ToString("yyyy-MM-dd HH:mm"))
+                </small>
+            </h3>
+
+            <flx_web.Components.ResultsTable 
+                Customer=CustomerForTable
+                />
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public string CustomerId { get; set; }
+
+    private SynthData DataForTable;
+
+    private Settings Settings;
+
+    private DateTime LastLoad;
+
+    private SynthCustomer CustomerForTable;
+
+    private String Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+
+        var timer = new System.Timers.Timer(1);
+        timer.Elapsed += async (s, e) =>
+        {
+            timer.Interval = 15000;
+
+            LastLoad = DateTime.Now;
+
+            await LoadDataForTable();
+
+            InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        };
+        timer.Start();
+    }
+
+    protected async Task LoadDataForTable()
+    {
+        try
+        {            
+            var json = await Http.GetStringAsync($"data/{Settings.ReleaseDataFile}?hash={Guid.NewGuid()}");
+            DataForTable = Newtonsoft.Json.JsonConvert.DeserializeObject<SynthData>(json,
+                new Newtonsoft.Json.JsonSerializerSettings()
+                {
+                    DateTimeZoneHandling = Newtonsoft.Json.DateTimeZoneHandling.Local
+                });
+            
+            DataForTable.AddNames();
+
+            CustomerForTable = DataForTable.Customers.
+                FirstOrDefault(c => c != null && c.Id .ToLower() == CustomerId.ToLower());
+
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            Error = "Connection error.";
+        }
+    }
+
+    protected async Task LoadSettings()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync($"data/settings.json?hash={Guid.NewGuid()}");
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+        }
+        catch (Exception ex)
+        {
+            Error = $"Connection error. {ex.Message}";
+        }
+    }
+
+}
+
+
